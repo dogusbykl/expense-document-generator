@@ -20,39 +20,41 @@
           type="text/css"
           href="https://dogusbykl.github.io/expense-document-generator/css/style.css" />
 
-    <script type="text/javascript"
-            src="https://dogusbykl.github.io/expense-document-generator/js/app.js">
-    </script>
+      <script
+          type="text/javascript"
+          src="https://dogusbykl.github.io/expense-document-generator/js/app.js?v=4">
+      </script>
 
-    <script type="text/javascript">
-
-        function widgetLoading() {
-
-            if (typeof widget !== "undefined" && widget) {
-
-                console.log("Widget runtime ready.");
-
-                executeWidgetCode();
-
-            } else {
-
-                console.log("Waiting for widget runtime...");
-
-                setTimeout(widgetLoading, 100);
-
-            }
-        }
-
-        widgetLoading();
-
-    </script>
-
-</head>
-
-<body>
-
-    <p>Loading Expense Document Generator...</p>
-
-</body>
-
-</html>
+        <script type="text/javascript">
+      
+          console.log("INLINE SCRIPT STARTED");
+          console.log("widget =", typeof widget);
+          console.log("executeWidgetCode =", typeof executeWidgetCode);
+      
+          function widgetLoading() {
+      
+              console.log(
+                  "widgetLoading:",
+                  typeof widget,
+                  typeof executeWidgetCode
+              );
+      
+              if (
+                  typeof widget !== "undefined" &&
+                  typeof executeWidgetCode === "function"
+              ) {
+      
+                  console.log("Calling executeWidgetCode");
+      
+                  executeWidgetCode();
+      
+              } else {
+      
+                  setTimeout(widgetLoading, 1000);
+      
+              }
+          }
+      
+          widgetLoading();
+      
+      </script>
