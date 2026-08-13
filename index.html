@@ -1,21 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html>
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:widget="http://www.netvibes.com/ns/">
+
 <head>
-    <meta charset="UTF-8">
+
     <title>Expense Document Generator</title>
+
+    <meta name="author" content="Doğuşcan Bıyıklı" />
+    <meta name="description"
+          content="Expense Document Generator for 3DEXPERIENCE" />
+
+    <meta name="apiVersion" content="1.3" />
+    <meta name="debugMode" content="true" />
+    <meta name="strictMode" content="false" />
+
+    <script type="text/javascript">
+
+        widget.addEvent("onLoad", function () {
+
+            widget.body.innerHTML =
+                "<div style='padding:20px'>" +
+                    "<h2>Expense Document Generator</h2>" +
+                    "<p>3DEXPERIENCE Widget Runtime is working.</p>" +
+                "</div>";
+
+            console.log("Expense Widget loaded");
+            console.log("widget:", widget);
+
+        });
+
+    </script>
+
 </head>
 
 <body>
-    <h2>Expense Document Generator</h2>
-    <p id="status">Checking 3DEXPERIENCE runtime...</p>
 
-    <script>
-        const status = document.getElementById("status");
+    <p>Loading Expense Widget...</p>
 
-        status.innerHTML =
-            "widget: " + typeof widget +
-            "<br>require: " + typeof require +
-            "<br>define: " + typeof define;
-    </script>
 </body>
+
 </html>
