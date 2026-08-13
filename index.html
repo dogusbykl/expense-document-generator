@@ -5,21 +5,34 @@
 
     <title>Expense Document Generator</title>
 
-    <script>
-        widget.addEvent("onLoad", function () {
+    <script type="text/javascript">
+        require([
+            "UWA/Core",
+            "UWA/Class"
+        ], function (UWA, Class) {
 
-            widget.body.innerHTML =
-                "<div style='padding:20px;font-family:Arial'>" +
-                "<h2>Expense Document Generator</h2>" +
-                "<p>My first 3DEXPERIENCE Widget is running!</p>" +
-                "<button id='testButton'>Test Widget</button>" +
-                "</div>";
+            var ExpenseApp = {
 
-            document
-                .getElementById("testButton")
-                .addEventListener("click", function () {
-                    alert("Expense Widget works!");
-                });
+                init: function () {
+
+                    widget.body.innerHTML =
+                        "<div style='padding:20px;font-family:Arial'>" +
+                            "<h2>Expense Document Generator</h2>" +
+                            "<p>My first 3DEXPERIENCE Widget is running!</p>" +
+                            "<button id='testButton'>Test Widget</button>" +
+                        "</div>";
+
+                    document
+                        .getElementById("testButton")
+                        .addEventListener("click", function () {
+                            alert("Expense Widget works!");
+                        });
+                }
+            };
+
+            widget.addEvent("onLoad", function () {
+                ExpenseApp.init();
+            });
 
         });
     </script>
