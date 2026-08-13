@@ -1,41 +1,25 @@
-var ExpenseApp = {
+function executeWidgetCode() {
 
-    init: function () {
+    var ExpenseApp = {
 
-        console.log("Expense Document Generator started.");
+        init: function () {
 
-        widget.body.innerHTML =
-            '<div class="expense-app">' +
+            console.log("Expense Document Generator started.");
 
-                '<h2>Expense Document Generator</h2>' +
+            widget.body.innerHTML =
+                '<div class="expense-app">' +
+                    '<h2>Expense Document Generator</h2>' +
+                    '<p class="subtitle">Manage your expense documents.</p>' +
+                    '<button id="addExpenseBtn">Add Expense</button>' +
+                '</div>';
 
-                '<p class="subtitle">' +
-                    'Manage your expense documents.' +
-                '</p>' +
+            document
+                .getElementById("addExpenseBtn")
+                .addEventListener("click", function () {
+                    alert("Add Expense clicked");
+                });
+        }
+    };
 
-                '<button id="addExpenseBtn">' +
-                    'Add Expense' +
-                '</button>' +
-
-            '</div>';
-
-        document
-            .getElementById("addExpenseBtn")
-            .addEventListener("click", ExpenseApp.addExpense);
-    },
-
-
-    addExpense: function () {
-
-        alert("Add Expense clicked");
-
-    }
-
-};
-
-
-widget.addEvent("onLoad", function () {
-
-    ExpenseApp.init();
-
-});
+    widget.addEvent("onLoad", ExpenseApp.init);
+}
