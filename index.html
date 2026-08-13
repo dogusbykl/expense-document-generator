@@ -16,17 +16,43 @@
     <meta name="debugMode" content="true" />
     <meta name="strictMode" content="false" />
 
-<link rel="stylesheet"
-      type="text/css"
-      href="https://dogusbykl.github.io/expense-document-generator/css/style.css" />
+    <link rel="stylesheet"
+          type="text/css"
+          href="https://dogusbykl.github.io/expense-document-generator/css/style.css" />
 
-<script type="text/javascript"
-        src="https://dogusbykl.github.io/expense-document-generator/js/app.js">
-</script>
+    <script type="text/javascript"
+            src="https://dogusbykl.github.io/expense-document-generator/js/app.js">
+    </script>
+
+    <script type="text/javascript">
+
+        function widgetLoading() {
+
+            if (typeof widget !== "undefined" && widget) {
+
+                console.log("Widget runtime ready.");
+
+                executeWidgetCode();
+
+            } else {
+
+                console.log("Waiting for widget runtime...");
+
+                setTimeout(widgetLoading, 100);
+
+            }
+        }
+
+        widgetLoading();
+
+    </script>
 
 </head>
 
 <body>
+
+    <p>Loading Expense Document Generator...</p>
+
 </body>
 
 </html>
