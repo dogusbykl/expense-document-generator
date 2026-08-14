@@ -32,6 +32,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 20px;
             margin-bottom: 20px;
         }
 
@@ -44,11 +45,16 @@
             color: #666;
         }
 
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
         button {
             cursor: pointer;
         }
 
-        .add-expense-button {
+        .main-button {
             padding: 10px 18px;
         }
 
@@ -186,6 +192,111 @@
             font-size: 12px;
         }
 
+        /* =========================================================
+           PDF PREVIEW
+           ========================================================= */
+
+        .pdf-preview-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .pdf-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .pdf-preview-header h3 {
+            margin: 0;
+        }
+
+        .pdf-preview-subtitle {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .pdf-preview-pages {
+            background: #eeeeee;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .pdf-page {
+            position: relative;
+
+            width: 794px;
+            min-height: 1123px;
+
+            margin: 0 auto 25px auto;
+
+            background: white;
+
+            box-sizing: border-box;
+
+            padding: 55px 45px 45px 45px;
+
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        }
+
+        .pdf-receipt-label {
+            position: absolute;
+
+            top: 15px;
+            left: 18px;
+
+            font-size: 24px;
+            font-weight: bold;
+
+            border: 2px solid #222;
+
+            padding: 4px 10px;
+
+            background: white;
+
+            z-index: 10;
+        }
+
+        .pdf-document-area {
+            width: 100%;
+            height: 940px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pdf-document-area img {
+            max-width: 100%;
+            max-height: 100%;
+
+            object-fit: contain;
+        }
+
+        .pdf-document-area iframe {
+            width: 100%;
+            height: 100%;
+
+            border: none;
+        }
+
+        .pdf-page-footer {
+            position: absolute;
+
+            bottom: 15px;
+            left: 45px;
+            right: 45px;
+
+            font-size: 11px;
+            color: #777;
+
+            display: flex;
+            justify-content: space-between;
+        }
+
     </style>
 
 
@@ -212,7 +323,7 @@
              *
              * [1], [2], [3]...
              *
-             * Deleted numbers are NOT reused.
+             * Deleted numbers are never reused.
              */
 
             var nextReceiptNumber = 1;
@@ -225,6 +336,7 @@
              */
 
             var monthSheets = [
+
                 "JAN-01",
                 "FEB-02",
                 "MAR-03",
@@ -237,6 +349,7 @@
                 "OCT-10",
                 "NOV-11",
                 "DEC-12"
+
             ];
 
 
@@ -263,7 +376,7 @@
 
             /*
              * =========================================================
-             * UI
+             * MAIN UI
              * =========================================================
              */
 
@@ -283,9 +396,18 @@
 
                         '</div>' +
 
-                        '<button id="addExpenseBtn" class="add-expense-button">' +
-                            'Add Expense' +
-                        '</button>' +
+
+                        '<div class="header-actions">' +
+
+                            '<button id="pdfPreviewBtn" class="main-button">' +
+                                'PDF Layout Preview' +
+                            '</button>' +
+
+                            '<button id="addExpenseBtn" class="main-button">' +
+                                'Add Expense' +
+                            '</button>' +
+
+                        '</div>' +
 
                     '</div>' +
 
@@ -474,6 +596,36 @@
 
                     '</div>' +
 
+
+                    /*
+                     * PDF LAYOUT PREVIEW
+                     */
+
+                    '<div id="pdfPreviewSection" class="pdf-preview-section">' +
+
+                        '<div class="pdf-preview-header">' +
+
+                            '<div>' +
+
+                                '<h3>Combined Receipt PDF Preview</h3>' +
+
+                                '<div class="pdf-preview-subtitle">' +
+                                    'Receipts are ordered by receipt number.' +
+                                '</div>' +
+
+                            '</div>' +
+
+                            '<button id="closePdfPreviewBtn" class="main-button">' +
+                                'Close Preview' +
+                            '</button>' +
+
+                        '</div>' +
+
+                        '<div id="pdfPreviewPages" class="pdf-preview-pages">' +
+                        '</div>' +
+
+                    '</div>' +
+
                 '</div>';
 
 
@@ -518,14 +670,6 @@
 
 
             function getExcelReceiptReference(receiptNumber) {
-
-                /*
-                 * Final Excel notation:
-                 *
-                 * X[1]
-                 * X[2]
-                 * X[13]
-                 */
 
                 return "X[" + receiptNumber + "]";
 
@@ -831,7 +975,7 @@
 
             /*
              * =========================================================
-             * RENDER RECEIPT REGISTER
+             * RECEIPT REGISTER
              * =========================================================
              */
 
@@ -906,27 +1050,14 @@
 
                         '<tr>' +
 
-
-                            /*
-                             * RECEIPT REFERENCE
-                             */
-
                             '<td class="receipt-reference">' +
 
                                 escapeHtml(
-
-                                    getReceiptReference(
-                                        expense.receiptNumber
-                                    )
-
+                                    expense.displayLabel
                                 ) +
 
                             '</td>' +
 
-
-                            /*
-                             * DATE
-                             */
 
                             '<td>' +
 
@@ -937,10 +1068,6 @@
                             '</td>' +
 
 
-                            /*
-                             * CUSTOMER / ACTIVITY
-                             */
-
                             '<td>' +
 
                                 escapeHtml(
@@ -949,10 +1076,6 @@
 
                             '</td>' +
 
-
-                            /*
-                             * PLACE
-                             */
 
                             '<td>' +
 
@@ -963,10 +1086,6 @@
                             '</td>' +
 
 
-                            /*
-                             * EXPENSE TYPE
-                             */
-
                             '<td>' +
 
                                 escapeHtml(
@@ -976,10 +1095,6 @@
                             '</td>' +
 
 
-                            /*
-                             * AMOUNT
-                             */
-
                             '<td>' +
 
                                 expense.amount
@@ -988,22 +1103,14 @@
                             '</td>' +
 
 
-                            /*
-                             * FILE
-                             */
-
                             '<td>' +
 
                                 escapeHtml(
-                                    expense.fileName
+                                    expense.document.fileName
                                 ) +
 
                             '</td>' +
 
-
-                            /*
-                             * ACTIONS
-                             */
 
                             '<td class="table-actions">' +
 
@@ -1032,7 +1139,6 @@
                                 '</button>' +
 
                             '</td>' +
-
 
                         '</tr>';
 
@@ -1120,10 +1226,6 @@
                         expense.amount;
 
 
-                /*
-                 * Permanent receipt reference
-                 */
-
                 document
                     .getElementById(
                         "receiptNumberBox"
@@ -1131,14 +1233,11 @@
                     .textContent =
 
                         "Receipt " +
-
-                        getReceiptReference(
-                            expense.receiptNumber
-                        );
+                        expense.displayLabel;
 
 
                 showDocumentPreview(
-                    expense.file
+                    expense.document.file
                 );
 
 
@@ -1187,6 +1286,236 @@
 
             /*
              * =========================================================
+             * PDF LAYOUT PREVIEW
+             * =========================================================
+             */
+
+            function renderPdfPreview() {
+
+                if (
+                    expenses.length === 0
+                ) {
+
+                    alert(
+                        "Please add at least one receipt."
+                    );
+
+                    return;
+
+                }
+
+
+                var previewPages =
+                    document.getElementById(
+                        "pdfPreviewPages"
+                    );
+
+
+                previewPages.innerHTML =
+                    "";
+
+
+                var orderedExpenses =
+                    expenses.slice();
+
+
+                orderedExpenses.sort(
+                    function (a, b) {
+
+                        return (
+                            a.receiptNumber -
+                            b.receiptNumber
+                        );
+
+                    }
+                );
+
+
+                for (
+                    var i = 0;
+                    i < orderedExpenses.length;
+                    i++
+                ) {
+
+                    var expense =
+                        orderedExpenses[i];
+
+
+                    /*
+                     * PAGE
+                     */
+
+                    var page =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    page.className =
+                        "pdf-page";
+
+
+                    /*
+                     * DIGITAL LABEL
+                     */
+
+                    var label =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    label.className =
+                        "pdf-receipt-label";
+
+
+                    label.textContent =
+                        expense.displayLabel;
+
+
+                    page.appendChild(
+                        label
+                    );
+
+
+                    /*
+                     * DOCUMENT AREA
+                     */
+
+                    var documentArea =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    documentArea.className =
+                        "pdf-document-area";
+
+
+                    var objectUrl =
+                        URL.createObjectURL(
+                            expense.document.file
+                        );
+
+
+                    if (
+                        expense.document.fileType ===
+                        "application/pdf"
+                    ) {
+
+                        var iframe =
+                            document.createElement(
+                                "iframe"
+                            );
+
+
+                        iframe.src =
+                            objectUrl;
+
+
+                        documentArea.appendChild(
+                            iframe
+                        );
+
+                    } else {
+
+                        var image =
+                            document.createElement(
+                                "img"
+                            );
+
+
+                        image.src =
+                            objectUrl;
+
+
+                        documentArea.appendChild(
+                            image
+                        );
+
+                    }
+
+
+                    page.appendChild(
+                        documentArea
+                    );
+
+
+                    /*
+                     * FOOTER
+                     */
+
+                    var footer =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    footer.className =
+                        "pdf-page-footer";
+
+
+                    footer.innerHTML =
+
+                        '<span>' +
+
+                            escapeHtml(
+                                expense.document.fileName
+                            ) +
+
+                        '</span>' +
+
+                        '<span>' +
+
+                            escapeHtml(
+                                expense.date
+                            ) +
+
+                            ' | ' +
+
+                            expense.amount.toFixed(2) +
+
+                            ' TL' +
+
+                        '</span>';
+
+
+                    page.appendChild(
+                        footer
+                    );
+
+
+                    previewPages.appendChild(
+                        page
+                    );
+
+                }
+
+
+                document
+                    .getElementById(
+                        "pdfPreviewSection"
+                    )
+                    .style.display =
+                        "block";
+
+
+                document
+                    .getElementById(
+                        "pdfPreviewSection"
+                    )
+                    .scrollIntoView({
+
+                        behavior:
+                            "smooth"
+
+                    });
+
+            }
+
+
+            /*
+             * =========================================================
              * ADD NEW RECEIPT
              * =========================================================
              */
@@ -1207,6 +1536,45 @@
                                 "expenseFileInput"
                             )
                             .click();
+
+                    }
+                );
+
+
+            /*
+             * =========================================================
+             * PDF PREVIEW BUTTON
+             * =========================================================
+             */
+
+            document
+                .getElementById(
+                    "pdfPreviewBtn"
+                )
+                .addEventListener(
+                    "click",
+                    function () {
+
+                        renderPdfPreview();
+
+                    }
+                );
+
+
+            document
+                .getElementById(
+                    "closePdfPreviewBtn"
+                )
+                .addEventListener(
+                    "click",
+                    function () {
+
+                        document
+                            .getElementById(
+                                "pdfPreviewSection"
+                            )
+                            .style.display =
+                                "none";
 
                     }
                 );
@@ -1285,10 +1653,6 @@
                             .textContent =
                                 "New Expense";
 
-
-                        /*
-                         * Show number that will be assigned
-                         */
 
                         document
                             .getElementById(
@@ -1487,7 +1851,11 @@
 
 
                             /*
-                             * receiptNumber is intentionally NOT changed.
+                             * receiptNumber
+                             * displayLabel
+                             * excelReference
+                             *
+                             * NEVER CHANGE DURING EDIT.
                              */
 
                             existingExpense.date =
@@ -1526,10 +1894,6 @@
 
                                 "Receipt updated:",
 
-                                getReceiptReference(
-                                    existingExpense.receiptNumber
-                                ),
-
                                 existingExpense
 
                             );
@@ -1560,6 +1924,20 @@
                                     receiptNumber,
 
 
+                                displayLabel:
+
+                                    getReceiptReference(
+                                        receiptNumber
+                                    ),
+
+
+                                excelReference:
+
+                                    getExcelReceiptReference(
+                                        receiptNumber
+                                    ),
+
+
                                 /*
                                  * EXPENSE DATA
                                  */
@@ -1584,43 +1962,47 @@
                                     amount,
 
 
-                                /*
-                                 * COMPANY EXPENSES ARE TL ONLY
-                                 */
-
                                 currency:
                                     "TRY",
 
 
                                 /*
-                                 * SOURCE DOCUMENT
+                                 * DOCUMENT
                                  */
 
-                                fileName:
-                                    selectedFile.name,
+                                document: {
 
+                                    file:
+                                        selectedFile,
 
-                                fileType:
-                                    selectedFile.type,
+                                    fileName:
+                                        selectedFile.name,
 
+                                    fileType:
+                                        selectedFile.type,
 
-                                fileSize:
-                                    selectedFile.size,
+                                    fileSize:
+                                        selectedFile.size
 
-
-                                file:
-                                    selectedFile,
+                                },
 
 
                                 /*
-                                 * EXCEL TRACEABILITY
+                                 * PDF LAYOUT METADATA
                                  */
 
-                                excelReference:
+                                pdfLayout: {
 
-                                    getExcelReceiptReference(
-                                        receiptNumber
-                                    ),
+                                    rotation:
+                                        0,
+
+                                    fitMode:
+                                        "contain",
+
+                                    labelPosition:
+                                        "top-left"
+
+                                },
 
 
                                 /*
@@ -1642,20 +2024,12 @@
                             );
 
 
-                            /*
-                             * Never reuse receipt numbers.
-                             */
-
                             nextReceiptNumber++;
 
 
                             console.log(
 
                                 "Receipt created:",
-
-                                getReceiptReference(
-                                    expense.receiptNumber
-                                ),
 
                                 expense
 
@@ -1811,9 +2185,7 @@
 
                                     "Delete Receipt " +
 
-                                    getReceiptReference(
-                                        expense.receiptNumber
-                                    ) +
+                                    expense.displayLabel +
 
                                     "?\n\n" +
 
@@ -1840,10 +2212,7 @@
 
 
                             /*
-                             * Important:
-                             *
-                             * We remove the expense,
-                             * but NEVER renumber other receipts.
+                             * Receipt numbers are not reused.
                              */
 
                             expenses.splice(
@@ -1856,9 +2225,7 @@
 
                                 "Receipt deleted:",
 
-                                getReceiptReference(
-                                    expense.receiptNumber
-                                )
+                                expense.displayLabel
 
                             );
 
