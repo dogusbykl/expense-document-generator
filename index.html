@@ -57,7 +57,7 @@
   </style>
   <script type="text/javascript">
   widget.addEvent("onLoad", function () {
-    var CONFIG = { mode:"mock", proxyUrl:"http://localhost:3000/api/receipts/extract" };
+    var CONFIG = { mode:"proxy", proxyUrl:"http://localhost:3000/api/receipts/extract" };
     var receipts=[], nextNumber=1, activeIndex=-1, objectUrls=[];
     widget.body.innerHTML =
       '<div class="app"><div class="topbar"><div><h2>Expense Document Generator</h2><div class="muted">Batch receipt extraction and review</div></div><div class="actions"><button id="pdfBtn" class="btn">PDF Layout Preview</button><button id="addBtn" class="btn primary">Add Receipts</button></div></div>'+
