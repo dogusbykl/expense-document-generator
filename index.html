@@ -87,6 +87,14 @@
             margin: 0 0 18px 0;
         }
 
+        .receipt-number-box {
+            margin-bottom: 16px;
+            padding: 10px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            font-weight: bold;
+        }
+
         .form-group {
             margin-bottom: 14px;
         }
@@ -109,7 +117,6 @@
             padding: 8px;
             background: #f5f5f5;
             border: 1px solid #ddd;
-            color: #444;
         }
 
         .action-buttons {
@@ -158,16 +165,15 @@
             background-color: #f5f5f5;
         }
 
+        .receipt-reference {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
         .empty-message {
             color: #777;
             font-style: italic;
             padding: 10px 0;
-        }
-
-        .expense-id {
-            color: #777;
-            font-size: 11px;
-            margin-top: 3px;
         }
 
         .table-actions {
@@ -180,21 +186,6 @@
             font-size: 12px;
         }
 
-        .view-button {
-            background: #ffffff;
-            border: 1px solid #aaa;
-        }
-
-        .edit-button {
-            background: #ffffff;
-            border: 1px solid #777;
-        }
-
-        .delete-button {
-            background: #ffffff;
-            border: 1px solid #999;
-        }
-
     </style>
 
 
@@ -203,21 +194,34 @@
         widget.addEvent("onLoad", function () {
 
             /*
+             * =========================================================
              * DATA
+             * =========================================================
              */
 
             var expenses = [];
 
             var selectedFile = null;
+
             var selectedFileUrl = null;
 
             var currentEditIndex = -1;
 
-            var nextExpenseNumber = 1;
+            /*
+             * Receipt numbers are permanent.
+             *
+             * [1], [2], [3]...
+             *
+             * Deleted numbers are NOT reused.
+             */
+
+            var nextReceiptNumber = 1;
 
 
             /*
-             * EXCEL TEMPLATE MAPPING
+             * =========================================================
+             * EXCEL MAPPING
+             * =========================================================
              */
 
             var monthSheets = [
@@ -237,19 +241,30 @@
 
 
             var excelColumnMap = {
+
                 "Fuel": "E",
+
                 "Toll": "F",
+
                 "Parking": "G",
+
                 "Hotel": "H",
+
                 "Meals": "I",
+
                 "Repr. Expenses": "J",
+
                 "Transports": "K",
+
                 "Others": "L"
+
             };
 
 
             /*
-             * MAIN UI
+             * =========================================================
+             * UI
+             * =========================================================
              */
 
             widget.body.innerHTML =
@@ -259,8 +274,13 @@
                     '<div class="expense-header">' +
 
                         '<div>' +
+
                             '<h2>Expense Document Generator</h2>' +
-                            '<p>Add and review expense documents before generating the report.</p>' +
+
+                            '<p>' +
+                                'Add and review expense documents before generating the report.' +
+                            '</p>' +
+
                         '</div>' +
 
                         '<button id="addExpenseBtn" class="add-expense-button">' +
@@ -269,6 +289,10 @@
 
                     '</div>' +
 
+
+                    /*
+                     * FILE INPUT
+                     */
 
                     '<input ' +
                         'type="file" ' +
@@ -284,6 +308,11 @@
 
                     '<div id="reviewLayout" class="review-layout">' +
 
+
+                        /*
+                         * LEFT SIDE
+                         */
+
                         '<div class="preview-panel">' +
 
                             '<div id="previewFileName" class="file-name"></div>' +
@@ -293,6 +322,10 @@
                         '</div>' +
 
 
+                        /*
+                         * RIGHT SIDE
+                         */
+
                         '<div class="form-panel">' +
 
                             '<h3 id="formTitle" class="form-title">' +
@@ -300,21 +333,43 @@
                             '</h3>' +
 
 
+                            '<div id="receiptNumberBox" class="receipt-number-box">' +
+                            '</div>' +
+
+
                             '<div class="form-group">' +
+
                                 '<label>Date</label>' +
-                                '<input type="date" id="expenseDate" />' +
+
+                                '<input ' +
+                                    'type="date" ' +
+                                    'id="expenseDate" ' +
+                                '/>' +
+
                             '</div>' +
 
 
                             '<div class="form-group">' +
+
                                 '<label>Customer / Activity</label>' +
-                                '<input type="text" id="customerActivity" />' +
+
+                                '<input ' +
+                                    'type="text" ' +
+                                    'id="customerActivity" ' +
+                                '/>' +
+
                             '</div>' +
 
 
                             '<div class="form-group">' +
+
                                 '<label>Place</label>' +
-                                '<input type="text" id="place" />' +
+
+                                '<input ' +
+                                    'type="text" ' +
+                                    'id="place" ' +
+                                '/>' +
+
                             '</div>' +
 
 
@@ -324,17 +379,29 @@
 
                                 '<select id="expenseType">' +
 
-                                    '<option value="">Select expense type</option>' +
+                                    '<option value="">' +
+                                        'Select expense type' +
+                                    '</option>' +
 
-                                    '<option value="Fuel">Fuel</option>' +
+                                    '<option value="Fuel">' +
+                                        'Fuel' +
+                                    '</option>' +
 
-                                    '<option value="Toll">Toll</option>' +
+                                    '<option value="Toll">' +
+                                        'Toll' +
+                                    '</option>' +
 
-                                    '<option value="Parking">Parking</option>' +
+                                    '<option value="Parking">' +
+                                        'Parking' +
+                                    '</option>' +
 
-                                    '<option value="Hotel">Hotel</option>' +
+                                    '<option value="Hotel">' +
+                                        'Hotel' +
+                                    '</option>' +
 
-                                    '<option value="Meals">Meals</option>' +
+                                    '<option value="Meals">' +
+                                        'Meals' +
+                                    '</option>' +
 
                                     '<option value="Repr. Expenses">' +
                                         'Repr. Expenses' +
@@ -354,21 +421,27 @@
 
 
                             '<div class="form-group">' +
+
                                 '<label>Amount (TL)</label>' +
+
                                 '<input ' +
                                     'type="number" ' +
                                     'step="0.01" ' +
                                     'min="0" ' +
                                     'id="amount" ' +
                                 '/>' +
+
                             '</div>' +
 
 
                             '<div class="form-group">' +
+
                                 '<label>Currency</label>' +
+
                                 '<div class="currency-display">' +
                                     'TL' +
                                 '</div>' +
+
                             '</div>' +
 
 
@@ -390,12 +463,12 @@
 
 
                     /*
-                     * EXPENSE LIST
+                     * RECEIPT REGISTER
                      */
 
                     '<div class="expense-list-section">' +
 
-                        '<h3>Expense Documents</h3>' +
+                        '<h3>Receipt Register</h3>' +
 
                         '<div id="expenseListContainer"></div>' +
 
@@ -405,52 +478,103 @@
 
 
             /*
+             * =========================================================
              * HELPERS
+             * =========================================================
              */
 
             function escapeHtml(value) {
 
-                if (value === null || value === undefined) {
+                if (
+                    value === null ||
+                    value === undefined
+                ) {
+
                     return "";
+
                 }
 
+
                 return String(value)
+
                     .replace(/&/g, "&amp;")
+
                     .replace(/</g, "&lt;")
+
                     .replace(/>/g, "&gt;")
+
                     .replace(/"/g, "&quot;")
+
                     .replace(/'/g, "&#039;");
+
             }
 
 
-            function createExcelTarget(date, expenseType) {
+            function getReceiptReference(receiptNumber) {
+
+                return "[" + receiptNumber + "]";
+
+            }
+
+
+            function getExcelReceiptReference(receiptNumber) {
+
+                /*
+                 * Final Excel notation:
+                 *
+                 * X[1]
+                 * X[2]
+                 * X[13]
+                 */
+
+                return "X[" + receiptNumber + "]";
+
+            }
+
+
+            function createExcelTarget(
+                date,
+                expenseType
+            ) {
 
                 var parsedDate =
-                    new Date(date + "T00:00:00");
+                    new Date(
+                        date + "T00:00:00"
+                    );
+
 
                 var monthIndex =
                     parsedDate.getMonth();
 
+
                 var day =
                     parsedDate.getDate();
+
 
                 return {
 
                     sheet:
-                        monthSheets[monthIndex],
+                        monthSheets[
+                            monthIndex
+                        ],
 
                     day:
                         day,
 
                     categoryColumn:
-                        excelColumnMap[expenseType]
+                        excelColumnMap[
+                            expenseType
+                        ]
 
                 };
+
             }
 
 
             /*
-             * PREVIEW DOCUMENT
+             * =========================================================
+             * DOCUMENT PREVIEW
+             * =========================================================
              */
 
             function showDocumentPreview(file) {
@@ -462,14 +586,18 @@
                     );
 
                     selectedFileUrl = null;
+
                 }
 
 
-                selectedFile = file;
+                selectedFile =
+                    file;
 
 
                 if (!selectedFile) {
+
                     return;
+
                 }
 
 
@@ -493,7 +621,8 @@
                     );
 
 
-                previewContainer.innerHTML = "";
+                previewContainer.innerHTML =
+                    "";
 
 
                 if (
@@ -502,105 +631,173 @@
                 ) {
 
                     previewContainer.innerHTML =
+
                         '<iframe src="' +
-                        selectedFileUrl +
-                        '"></iframe>';
+                            selectedFileUrl +
+                        '">' +
+                        '</iframe>';
 
                 } else {
 
                     previewContainer.innerHTML =
+
                         '<img src="' +
-                        selectedFileUrl +
+                            selectedFileUrl +
                         '" />';
 
                 }
+
             }
 
 
             /*
+             * =========================================================
              * FORM MODE
+             * =========================================================
              */
 
             function setFormReadOnly(readOnly) {
 
                 document
-                    .getElementById("expenseDate")
-                    .disabled = readOnly;
-
-                document
-                    .getElementById("customerActivity")
-                    .disabled = readOnly;
-
-                document
-                    .getElementById("place")
-                    .disabled = readOnly;
-
-                document
-                    .getElementById("expenseType")
-                    .disabled = readOnly;
-
-                document
-                    .getElementById("amount")
-                    .disabled = readOnly;
+                    .getElementById(
+                        "expenseDate"
+                    )
+                    .disabled =
+                        readOnly;
 
 
                 document
-                    .getElementById("saveExpenseBtn")
+                    .getElementById(
+                        "customerActivity"
+                    )
+                    .disabled =
+                        readOnly;
+
+
+                document
+                    .getElementById(
+                        "place"
+                    )
+                    .disabled =
+                        readOnly;
+
+
+                document
+                    .getElementById(
+                        "expenseType"
+                    )
+                    .disabled =
+                        readOnly;
+
+
+                document
+                    .getElementById(
+                        "amount"
+                    )
+                    .disabled =
+                        readOnly;
+
+
+                document
+                    .getElementById(
+                        "saveExpenseBtn"
+                    )
                     .style.display =
+
                         readOnly
                             ? "none"
                             : "inline-block";
 
 
                 document
-                    .getElementById("closeExpenseBtn")
+                    .getElementById(
+                        "closeExpenseBtn"
+                    )
                     .textContent =
+
                         readOnly
                             ? "Close"
                             : "Cancel";
+
             }
 
 
             /*
-             * RESET
+             * =========================================================
+             * RESET FORM
+             * =========================================================
              */
 
             function resetExpenseForm() {
 
                 document
-                    .getElementById("expenseDate")
+                    .getElementById(
+                        "expenseDate"
+                    )
                     .value = "";
 
+
                 document
-                    .getElementById("customerActivity")
+                    .getElementById(
+                        "customerActivity"
+                    )
                     .value = "";
 
+
                 document
-                    .getElementById("place")
+                    .getElementById(
+                        "place"
+                    )
                     .value = "";
 
+
                 document
-                    .getElementById("expenseType")
+                    .getElementById(
+                        "expenseType"
+                    )
                     .value = "";
 
+
                 document
-                    .getElementById("amount")
+                    .getElementById(
+                        "amount"
+                    )
                     .value = "";
 
+
                 document
-                    .getElementById("expenseFileInput")
+                    .getElementById(
+                        "expenseFileInput"
+                    )
                     .value = "";
 
-                document
-                    .getElementById("reviewLayout")
-                    .style.display = "none";
 
                 document
-                    .getElementById("previewContainer")
+                    .getElementById(
+                        "reviewLayout"
+                    )
+                    .style.display =
+                        "none";
+
+
+                document
+                    .getElementById(
+                        "previewContainer"
+                    )
                     .innerHTML = "";
 
+
                 document
-                    .getElementById("previewFileName")
+                    .getElementById(
+                        "previewFileName"
+                    )
+                    .textContent = "";
+
+
+                document
+                    .getElementById(
+                        "receiptNumberBox"
+                    )
                     .textContent = "";
 
 
@@ -609,21 +806,33 @@
                     URL.revokeObjectURL(
                         selectedFileUrl
                     );
+
                 }
 
 
-                selectedFileUrl = null;
+                selectedFileUrl =
+                    null;
 
-                selectedFile = null;
 
-                currentEditIndex = -1;
+                selectedFile =
+                    null;
 
-                setFormReadOnly(false);
+
+                currentEditIndex =
+                    -1;
+
+
+                setFormReadOnly(
+                    false
+                );
+
             }
 
 
             /*
-             * RENDER LIST
+             * =========================================================
+             * RENDER RECEIPT REGISTER
+             * =========================================================
              */
 
             function renderExpenseList() {
@@ -634,14 +843,19 @@
                     );
 
 
-                if (expenses.length === 0) {
+                if (
+                    expenses.length === 0
+                ) {
 
                     container.innerHTML =
+
                         '<div class="empty-message">' +
-                            'No expense documents added yet.' +
+                            'No receipts added yet.' +
                         '</div>';
 
+
                     return;
+
                 }
 
 
@@ -654,14 +868,23 @@
                             '<thead>' +
 
                                 '<tr>' +
-                                    '<th>#</th>' +
-                                    '<th>Date</th>' +
-                                    '<th>Customer / Activity</th>' +
-                                    '<th>Place</th>' +
-                                    '<th>Expense Type</th>' +
-                                    '<th>Amount (TL)</th>' +
+
                                     '<th>Receipt</th>' +
+
+                                    '<th>Date</th>' +
+
+                                    '<th>Customer / Activity</th>' +
+
+                                    '<th>Place</th>' +
+
+                                    '<th>Expense Type</th>' +
+
+                                    '<th>Amount (TL)</th>' +
+
+                                    '<th>Document</th>' +
+
                                     '<th>Actions</th>' +
+
                                 '</tr>' +
 
                             '</thead>' +
@@ -683,69 +906,136 @@
 
                         '<tr>' +
 
-                            '<td>' +
-                                (i + 1) +
-                                '<div class="expense-id">' +
-                                    escapeHtml(expense.id) +
-                                '</div>' +
+
+                            /*
+                             * RECEIPT REFERENCE
+                             */
+
+                            '<td class="receipt-reference">' +
+
+                                escapeHtml(
+
+                                    getReceiptReference(
+                                        expense.receiptNumber
+                                    )
+
+                                ) +
+
                             '</td>' +
 
-                            '<td>' +
-                                escapeHtml(expense.date) +
-                            '</td>' +
+
+                            /*
+                             * DATE
+                             */
 
                             '<td>' +
+
+                                escapeHtml(
+                                    expense.date
+                                ) +
+
+                            '</td>' +
+
+
+                            /*
+                             * CUSTOMER / ACTIVITY
+                             */
+
+                            '<td>' +
+
                                 escapeHtml(
                                     expense.customerActivity
                                 ) +
+
                             '</td>' +
 
-                            '<td>' +
-                                escapeHtml(expense.place) +
-                            '</td>' +
+
+                            /*
+                             * PLACE
+                             */
 
                             '<td>' +
+
+                                escapeHtml(
+                                    expense.place
+                                ) +
+
+                            '</td>' +
+
+
+                            /*
+                             * EXPENSE TYPE
+                             */
+
+                            '<td>' +
+
                                 escapeHtml(
                                     expense.expenseType
                                 ) +
+
                             '</td>' +
 
-                            '<td>' +
-                                expense.amount.toFixed(2) +
-                            '</td>' +
+
+                            /*
+                             * AMOUNT
+                             */
 
                             '<td>' +
+
+                                expense.amount
+                                    .toFixed(2) +
+
+                            '</td>' +
+
+
+                            /*
+                             * FILE
+                             */
+
+                            '<td>' +
+
                                 escapeHtml(
                                     expense.fileName
                                 ) +
+
                             '</td>' +
+
+
+                            /*
+                             * ACTIONS
+                             */
 
                             '<td class="table-actions">' +
 
                                 '<button ' +
-                                    'class="view-button" ' +
                                     'data-action="view" ' +
-                                    'data-index="' + i + '">' +
+                                    'data-index="' +
+                                    i +
+                                    '">' +
                                     'View' +
                                 '</button>' +
 
                                 '<button ' +
-                                    'class="edit-button" ' +
                                     'data-action="edit" ' +
-                                    'data-index="' + i + '">' +
+                                    'data-index="' +
+                                    i +
+                                    '">' +
                                     'Edit' +
                                 '</button>' +
 
                                 '<button ' +
-                                    'class="delete-button" ' +
                                     'data-action="delete" ' +
-                                    'data-index="' + i + '">' +
+                                    'data-index="' +
+                                    i +
+                                    '">' +
                                     'Delete' +
                                 '</button>' +
 
                             '</td>' +
 
+
                         '</tr>';
+
                 }
 
 
@@ -758,12 +1048,16 @@
                     '</div>';
 
 
-                container.innerHTML = html;
+                container.innerHTML =
+                    html;
+
             }
 
 
             /*
-             * OPEN EXISTING EXPENSE
+             * =========================================================
+             * OPEN EXISTING RECEIPT
+             * =========================================================
              */
 
             function openExpense(
@@ -776,7 +1070,9 @@
 
 
                 if (!expense) {
+
                     return;
+
                 }
 
 
@@ -785,33 +1081,60 @@
 
 
                 document
-                    .getElementById("expenseDate")
+                    .getElementById(
+                        "expenseDate"
+                    )
                     .value =
                         expense.date;
 
 
                 document
-                    .getElementById("customerActivity")
+                    .getElementById(
+                        "customerActivity"
+                    )
                     .value =
                         expense.customerActivity;
 
 
                 document
-                    .getElementById("place")
+                    .getElementById(
+                        "place"
+                    )
                     .value =
                         expense.place;
 
 
                 document
-                    .getElementById("expenseType")
+                    .getElementById(
+                        "expenseType"
+                    )
                     .value =
                         expense.expenseType;
 
 
                 document
-                    .getElementById("amount")
+                    .getElementById(
+                        "amount"
+                    )
                     .value =
                         expense.amount;
+
+
+                /*
+                 * Permanent receipt reference
+                 */
+
+                document
+                    .getElementById(
+                        "receiptNumberBox"
+                    )
+                    .textContent =
+
+                        "Receipt " +
+
+                        getReceiptReference(
+                            expense.receiptNumber
+                        );
 
 
                 showDocumentPreview(
@@ -820,43 +1143,64 @@
 
 
                 document
-                    .getElementById("reviewLayout")
-                    .style.display = "flex";
+                    .getElementById(
+                        "reviewLayout"
+                    )
+                    .style.display =
+                        "flex";
 
 
-                if (mode === "view") {
+                if (
+                    mode === "view"
+                ) {
 
                     document
-                        .getElementById("formTitle")
+                        .getElementById(
+                            "formTitle"
+                        )
                         .textContent =
                             "View Expense";
 
-                    setFormReadOnly(true);
+
+                    setFormReadOnly(
+                        true
+                    );
 
                 } else {
 
                     document
-                        .getElementById("formTitle")
+                        .getElementById(
+                            "formTitle"
+                        )
                         .textContent =
                             "Edit Expense";
 
-                    setFormReadOnly(false);
+
+                    setFormReadOnly(
+                        false
+                    );
 
                 }
+
             }
 
 
             /*
-             * NEW EXPENSE
+             * =========================================================
+             * ADD NEW RECEIPT
+             * =========================================================
              */
 
             document
-                .getElementById("addExpenseBtn")
+                .getElementById(
+                    "addExpenseBtn"
+                )
                 .addEventListener(
                     "click",
                     function () {
 
                         resetExpenseForm();
+
 
                         document
                             .getElementById(
@@ -869,11 +1213,15 @@
 
 
             /*
+             * =========================================================
              * FILE SELECTED
+             * =========================================================
              */
 
             document
-                .getElementById("expenseFileInput")
+                .getElementById(
+                    "expenseFileInput"
+                )
                 .addEventListener(
                     "change",
                     function (event) {
@@ -883,44 +1231,81 @@
 
 
                         if (!file) {
+
                             return;
+
                         }
 
 
                         var allowedTypes = [
+
                             "application/pdf",
+
                             "image/jpeg",
+
                             "image/png"
+
                         ];
 
 
                         if (
+
                             allowedTypes.indexOf(
                                 file.type
                             ) === -1
+
                         ) {
 
                             alert(
+
                                 "Unsupported file type.\n\n" +
+
                                 "Please select a PDF, JPG or PNG document."
+
                             );
 
-                            event.target.value = "";
+
+                            event.target.value =
+                                "";
+
 
                             return;
+
                         }
 
 
-                        currentEditIndex = -1;
+                        currentEditIndex =
+                            -1;
 
 
                         document
-                            .getElementById("formTitle")
+                            .getElementById(
+                                "formTitle"
+                            )
                             .textContent =
                                 "New Expense";
 
 
-                        setFormReadOnly(false);
+                        /*
+                         * Show number that will be assigned
+                         */
+
+                        document
+                            .getElementById(
+                                "receiptNumberBox"
+                            )
+                            .textContent =
+
+                                "Receipt " +
+
+                                getReceiptReference(
+                                    nextReceiptNumber
+                                );
+
+
+                        setFormReadOnly(
+                            false
+                        );
 
 
                         showDocumentPreview(
@@ -929,22 +1314,30 @@
 
 
                         document
-                            .getElementById("reviewLayout")
-                            .style.display = "flex";
+                            .getElementById(
+                                "reviewLayout"
+                            )
+                            .style.display =
+                                "flex";
 
                     }
                 );
 
 
             /*
+             * =========================================================
              * SAVE / UPDATE
+             * =========================================================
              */
 
             document
-                .getElementById("saveExpenseBtn")
+                .getElementById(
+                    "saveExpenseBtn"
+                )
                 .addEventListener(
                     "click",
                     function () {
+
 
                         if (!selectedFile) {
 
@@ -953,10 +1346,12 @@
                             );
 
                             return;
+
                         }
 
 
                         var date =
+
                             document
                                 .getElementById(
                                     "expenseDate"
@@ -965,6 +1360,7 @@
 
 
                         var customerActivity =
+
                             document
                                 .getElementById(
                                     "customerActivity"
@@ -974,6 +1370,7 @@
 
 
                         var place =
+
                             document
                                 .getElementById(
                                     "place"
@@ -983,6 +1380,7 @@
 
 
                         var expenseType =
+
                             document
                                 .getElementById(
                                     "expenseType"
@@ -991,6 +1389,7 @@
 
 
                         var amountValue =
+
                             document
                                 .getElementById(
                                     "amount"
@@ -1009,6 +1408,7 @@
                             );
 
                             return;
+
                         }
 
 
@@ -1019,6 +1419,7 @@
                             );
 
                             return;
+
                         }
 
 
@@ -1029,6 +1430,7 @@
                             );
 
                             return;
+
                         }
 
 
@@ -1039,12 +1441,18 @@
                             );
 
                             return;
+
                         }
 
 
                         if (
+
                             !amountValue ||
-                            parseFloat(amountValue) <= 0
+
+                            parseFloat(
+                                amountValue
+                            ) <= 0
+
                         ) {
 
                             alert(
@@ -1052,6 +1460,7 @@
                             );
 
                             return;
+
                         }
 
 
@@ -1062,7 +1471,9 @@
 
 
                         /*
+                         * =================================================
                          * UPDATE EXISTING
+                         * =================================================
                          */
 
                         if (
@@ -1075,31 +1486,36 @@
                                 ];
 
 
+                            /*
+                             * receiptNumber is intentionally NOT changed.
+                             */
+
                             existingExpense.date =
                                 date;
+
 
                             existingExpense.customerActivity =
                                 customerActivity;
 
+
                             existingExpense.place =
                                 place;
+
 
                             existingExpense.expenseType =
                                 expenseType;
 
+
                             existingExpense.amount =
                                 amount;
 
-
-                            /*
-                             * CURRENCY IS FIXED
-                             */
 
                             existingExpense.currency =
                                 "TRY";
 
 
                             existingExpense.excelTarget =
+
                                 createExcelTarget(
                                     date,
                                     expenseType
@@ -1107,65 +1523,112 @@
 
 
                             console.log(
-                                "Expense updated:",
+
+                                "Receipt updated:",
+
+                                getReceiptReference(
+                                    existingExpense.receiptNumber
+                                ),
+
                                 existingExpense
+
                             );
 
-                        } else {
+                        }
 
 
-                            /*
-                             * CREATE NEW
-                             */
+                        /*
+                         * =================================================
+                         * CREATE NEW
+                         * =================================================
+                         */
+
+                        else {
+
+                            var receiptNumber =
+                                nextReceiptNumber;
+
 
                             var expense = {
 
-                                id:
-                                    "EXP-" +
-                                    String(
-                                        nextExpenseNumber
-                                    ).padStart(
-                                        4,
-                                        "0"
-                                    ),
+
+                                /*
+                                 * MASTER TRACEABILITY ID
+                                 */
+
+                                receiptNumber:
+                                    receiptNumber,
+
+
+                                /*
+                                 * EXPENSE DATA
+                                 */
 
                                 date:
                                     date,
 
+
                                 customerActivity:
                                     customerActivity,
+
 
                                 place:
                                     place,
 
+
                                 expenseType:
                                     expenseType,
+
 
                                 amount:
                                     amount,
 
 
                                 /*
-                                 * ONLY TL IS ALLOWED
+                                 * COMPANY EXPENSES ARE TL ONLY
                                  */
 
                                 currency:
                                     "TRY",
 
 
+                                /*
+                                 * SOURCE DOCUMENT
+                                 */
+
                                 fileName:
                                     selectedFile.name,
+
 
                                 fileType:
                                     selectedFile.type,
 
+
                                 fileSize:
                                     selectedFile.size,
+
 
                                 file:
                                     selectedFile,
 
+
+                                /*
+                                 * EXCEL TRACEABILITY
+                                 */
+
+                                excelReference:
+
+                                    getExcelReceiptReference(
+                                        receiptNumber
+                                    ),
+
+
+                                /*
+                                 * EXCEL DESTINATION
+                                 */
+
                                 excelTarget:
+
                                     createExcelTarget(
                                         date,
                                         expenseType
@@ -1179,24 +1642,39 @@
                             );
 
 
-                            nextExpenseNumber++;
+                            /*
+                             * Never reuse receipt numbers.
+                             */
+
+                            nextReceiptNumber++;
 
 
                             console.log(
-                                "Expense created:",
+
+                                "Receipt created:",
+
+                                getReceiptReference(
+                                    expense.receiptNumber
+                                ),
+
                                 expense
+
                             );
 
                         }
 
 
                         console.log(
-                            "All expenses:",
+
+                            "Receipt Register:",
+
                             expenses
+
                         );
 
 
                         renderExpenseList();
+
 
                         resetExpenseForm();
 
@@ -1205,11 +1683,15 @@
 
 
             /*
+             * =========================================================
              * CLOSE / CANCEL
+             * =========================================================
              */
 
             document
-                .getElementById("closeExpenseBtn")
+                .getElementById(
+                    "closeExpenseBtn"
+                )
                 .addEventListener(
                     "click",
                     function () {
@@ -1221,38 +1703,50 @@
 
 
             /*
+             * =========================================================
              * VIEW / EDIT / DELETE
+             * =========================================================
              */
 
             document
-                .getElementById("expenseListContainer")
+                .getElementById(
+                    "expenseListContainer"
+                )
                 .addEventListener(
                     "click",
                     function (event) {
 
                         var button =
+
                             event.target.closest(
                                 "button[data-action]"
                             );
 
 
                         if (!button) {
+
                             return;
+
                         }
 
 
                         var action =
+
                             button.getAttribute(
                                 "data-action"
                             );
 
 
                         var index =
+
                             parseInt(
+
                                 button.getAttribute(
                                     "data-index"
                                 ),
+
                                 10
+
                             );
 
 
@@ -1260,7 +1754,9 @@
                          * VIEW
                          */
 
-                        if (action === "view") {
+                        if (
+                            action === "view"
+                        ) {
 
                             openExpense(
                                 index,
@@ -1268,6 +1764,7 @@
                             );
 
                             return;
+
                         }
 
 
@@ -1275,7 +1772,9 @@
                          * EDIT
                          */
 
-                        if (action === "edit") {
+                        if (
+                            action === "edit"
+                        ) {
 
                             openExpense(
                                 index,
@@ -1283,6 +1782,7 @@
                             );
 
                             return;
+
                         }
 
 
@@ -1290,33 +1790,61 @@
                          * DELETE
                          */
 
-                        if (action === "delete") {
+                        if (
+                            action === "delete"
+                        ) {
 
                             var expense =
                                 expenses[index];
 
 
                             if (!expense) {
+
                                 return;
+
                             }
 
 
                             var confirmed =
+
                                 confirm(
-                                    "Delete this expense?\n\n" +
+
+                                    "Delete Receipt " +
+
+                                    getReceiptReference(
+                                        expense.receiptNumber
+                                    ) +
+
+                                    "?\n\n" +
+
                                     expense.date +
+
                                     " - " +
+
                                     expense.customerActivity +
+
                                     "\n" +
+
                                     expense.amount.toFixed(2) +
+
                                     " TL"
+
                                 );
 
 
                             if (!confirmed) {
+
                                 return;
+
                             }
 
+
+                            /*
+                             * Important:
+                             *
+                             * We remove the expense,
+                             * but NEVER renumber other receipts.
+                             */
 
                             expenses.splice(
                                 index,
@@ -1325,11 +1853,18 @@
 
 
                             console.log(
-                                "Expense deleted."
+
+                                "Receipt deleted:",
+
+                                getReceiptReference(
+                                    expense.receiptNumber
+                                )
+
                             );
 
 
                             renderExpenseList();
+
 
                             resetExpenseForm();
 
@@ -1340,7 +1875,9 @@
 
 
             /*
-             * INITIAL LIST
+             * =========================================================
+             * INITIAL RENDER
+             * =========================================================
              */
 
             renderExpenseList();
