@@ -44,9 +44,12 @@
             color: #666;
         }
 
+        button {
+            cursor: pointer;
+        }
+
         .add-expense-button {
             padding: 10px 18px;
-            cursor: pointer;
         }
 
         .review-layout {
@@ -80,6 +83,10 @@
             padding: 16px;
         }
 
+        .form-title {
+            margin: 0 0 18px 0;
+        }
+
         .form-group {
             margin-bottom: 14px;
         }
@@ -98,6 +105,13 @@
             box-sizing: border-box;
         }
 
+        .currency-display {
+            padding: 8px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            color: #444;
+        }
+
         .action-buttons {
             margin-top: 20px;
             display: flex;
@@ -106,7 +120,6 @@
 
         .action-buttons button {
             padding: 9px 16px;
-            cursor: pointer;
         }
 
         .file-name {
@@ -130,7 +143,7 @@
         .expense-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 850px;
+            min-width: 950px;
         }
 
         .expense-table th,
@@ -152,8 +165,34 @@
         }
 
         .expense-id {
-            color: #666;
+            color: #777;
+            font-size: 11px;
+            margin-top: 3px;
+        }
+
+        .table-actions {
+            white-space: nowrap;
+        }
+
+        .table-actions button {
+            margin-right: 5px;
+            padding: 5px 8px;
             font-size: 12px;
+        }
+
+        .view-button {
+            background: #ffffff;
+            border: 1px solid #aaa;
+        }
+
+        .edit-button {
+            background: #ffffff;
+            border: 1px solid #777;
+        }
+
+        .delete-button {
+            background: #ffffff;
+            border: 1px solid #999;
         }
 
     </style>
@@ -164,14 +203,17 @@
         widget.addEvent("onLoad", function () {
 
             /*
-             * IN-MEMORY DATA
+             * DATA
              */
 
             var expenses = [];
 
             var selectedFile = null;
-
             var selectedFileUrl = null;
+
+            var currentEditIndex = -1;
+
+            var nextExpenseNumber = 1;
 
 
             /*
@@ -211,6 +253,7 @@
              */
 
             widget.body.innerHTML =
+
                 '<div class="expense-app">' +
 
                     '<div class="expense-header">' +
@@ -236,14 +279,10 @@
 
 
                     /*
-                     * REVIEW AREA
+                     * REVIEW / EDIT AREA
                      */
 
                     '<div id="reviewLayout" class="review-layout">' +
-
-                        /*
-                         * DOCUMENT PREVIEW
-                         */
 
                         '<div class="preview-panel">' +
 
@@ -254,11 +293,12 @@
                         '</div>' +
 
 
-                        /*
-                         * EXPENSE DATA
-                         */
-
                         '<div class="form-panel">' +
+
+                            '<h3 id="formTitle" class="form-title">' +
+                                'New Expense' +
+                            '</h3>' +
+
 
                             '<div class="form-group">' +
                                 '<label>Date</label>' +
@@ -304,7 +344,9 @@
                                         'Transports' +
                                     '</option>' +
 
-                                    '<option value="Others">Others</option>' +
+                                    '<option value="Others">' +
+                                        'Others' +
+                                    '</option>' +
 
                                 '</select>' +
 
@@ -312,21 +354,21 @@
 
 
                             '<div class="form-group">' +
-                                '<label>Amount</label>' +
-                                '<input type="number" step="0.01" min="0" id="amount" />' +
+                                '<label>Amount (TL)</label>' +
+                                '<input ' +
+                                    'type="number" ' +
+                                    'step="0.01" ' +
+                                    'min="0" ' +
+                                    'id="amount" ' +
+                                '/>' +
                             '</div>' +
 
 
                             '<div class="form-group">' +
-
                                 '<label>Currency</label>' +
-
-                                '<select id="currency">' +
-                                    '<option value="EUR">EUR</option>' +
-                                    '<option value="TRY">TRY</option>' +
-                                    '<option value="USD">USD</option>' +
-                                '</select>' +
-
+                                '<div class="currency-display">' +
+                                    'TL' +
+                                '</div>' +
                             '</div>' +
 
 
@@ -336,7 +378,7 @@
                                     'Save Expense' +
                                 '</button>' +
 
-                                '<button id="cancelExpenseBtn">' +
+                                '<button id="closeExpenseBtn">' +
                                     'Cancel' +
                                 '</button>' +
 
@@ -363,117 +405,164 @@
 
 
             /*
-             * RENDER EXPENSE LIST
+             * HELPERS
              */
 
-            function renderExpenseList() {
+            function escapeHtml(value) {
 
-                var container =
-                    document.getElementById(
-                        "expenseListContainer"
-                    );
-
-
-                if (expenses.length === 0) {
-
-                    container.innerHTML =
-                        '<div class="empty-message">' +
-                            'No expense documents added yet.' +
-                        '</div>';
-
-                    return;
+                if (value === null || value === undefined) {
+                    return "";
                 }
 
-
-                var html =
-                    '<div class="expense-table-wrapper">' +
-
-                    '<table class="expense-table">' +
-
-                        '<thead>' +
-
-                            '<tr>' +
-                                '<th>#</th>' +
-                                '<th>Date</th>' +
-                                '<th>Customer / Activity</th>' +
-                                '<th>Place</th>' +
-                                '<th>Expense Type</th>' +
-                                '<th>Amount</th>' +
-                                '<th>Currency</th>' +
-                                '<th>Receipt</th>' +
-                            '</tr>' +
-
-                        '</thead>' +
-
-                        '<tbody>';
+                return String(value)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
 
 
-                for (
-                    var i = 0;
-                    i < expenses.length;
-                    i++
-                ) {
+            function createExcelTarget(date, expenseType) {
 
-                    var expense = expenses[i];
+                var parsedDate =
+                    new Date(date + "T00:00:00");
 
+                var monthIndex =
+                    parsedDate.getMonth();
 
-                    html +=
+                var day =
+                    parsedDate.getDate();
 
-                        '<tr>' +
+                return {
 
-                            '<td>' +
-                                '<div>' + (i + 1) + '</div>' +
-                                '<div class="expense-id">' +
-                                    expense.id +
-                                '</div>' +
-                            '</td>' +
+                    sheet:
+                        monthSheets[monthIndex],
 
-                            '<td>' +
-                                expense.date +
-                            '</td>' +
+                    day:
+                        day,
 
-                            '<td>' +
-                                expense.customerActivity +
-                            '</td>' +
+                    categoryColumn:
+                        excelColumnMap[expenseType]
 
-                            '<td>' +
-                                expense.place +
-                            '</td>' +
-
-                            '<td>' +
-                                expense.expenseType +
-                            '</td>' +
-
-                            '<td>' +
-                                expense.amount.toFixed(2) +
-                            '</td>' +
-
-                            '<td>' +
-                                expense.currency +
-                            '</td>' +
-
-                            '<td>' +
-                                expense.fileName +
-                            '</td>' +
-
-                        '</tr>';
-                }
-
-
-                html +=
-                        '</tbody>' +
-
-                    '</table>' +
-
-                    '</div>';
-
-
-                container.innerHTML = html;
+                };
             }
 
 
             /*
-             * RESET FORM
+             * PREVIEW DOCUMENT
+             */
+
+            function showDocumentPreview(file) {
+
+                if (selectedFileUrl) {
+
+                    URL.revokeObjectURL(
+                        selectedFileUrl
+                    );
+
+                    selectedFileUrl = null;
+                }
+
+
+                selectedFile = file;
+
+
+                if (!selectedFile) {
+                    return;
+                }
+
+
+                selectedFileUrl =
+                    URL.createObjectURL(
+                        selectedFile
+                    );
+
+
+                document
+                    .getElementById(
+                        "previewFileName"
+                    )
+                    .textContent =
+                        selectedFile.name;
+
+
+                var previewContainer =
+                    document.getElementById(
+                        "previewContainer"
+                    );
+
+
+                previewContainer.innerHTML = "";
+
+
+                if (
+                    selectedFile.type ===
+                    "application/pdf"
+                ) {
+
+                    previewContainer.innerHTML =
+                        '<iframe src="' +
+                        selectedFileUrl +
+                        '"></iframe>';
+
+                } else {
+
+                    previewContainer.innerHTML =
+                        '<img src="' +
+                        selectedFileUrl +
+                        '" />';
+
+                }
+            }
+
+
+            /*
+             * FORM MODE
+             */
+
+            function setFormReadOnly(readOnly) {
+
+                document
+                    .getElementById("expenseDate")
+                    .disabled = readOnly;
+
+                document
+                    .getElementById("customerActivity")
+                    .disabled = readOnly;
+
+                document
+                    .getElementById("place")
+                    .disabled = readOnly;
+
+                document
+                    .getElementById("expenseType")
+                    .disabled = readOnly;
+
+                document
+                    .getElementById("amount")
+                    .disabled = readOnly;
+
+
+                document
+                    .getElementById("saveExpenseBtn")
+                    .style.display =
+                        readOnly
+                            ? "none"
+                            : "inline-block";
+
+
+                document
+                    .getElementById("closeExpenseBtn")
+                    .textContent =
+                        readOnly
+                            ? "Close"
+                            : "Cancel";
+            }
+
+
+            /*
+             * RESET
              */
 
             function resetExpenseForm() {
@@ -499,16 +588,20 @@
                     .value = "";
 
                 document
-                    .getElementById("currency")
-                    .value = "EUR";
-
-                document
                     .getElementById("expenseFileInput")
                     .value = "";
 
                 document
                     .getElementById("reviewLayout")
                     .style.display = "none";
+
+                document
+                    .getElementById("previewContainer")
+                    .innerHTML = "";
+
+                document
+                    .getElementById("previewFileName")
+                    .textContent = "";
 
 
                 if (selectedFileUrl) {
@@ -519,25 +612,260 @@
                 }
 
 
+                selectedFileUrl = null;
+
                 selectedFile = null;
 
-                selectedFileUrl = null;
+                currentEditIndex = -1;
+
+                setFormReadOnly(false);
             }
 
 
             /*
-             * ADD EXPENSE
+             * RENDER LIST
+             */
+
+            function renderExpenseList() {
+
+                var container =
+                    document.getElementById(
+                        "expenseListContainer"
+                    );
+
+
+                if (expenses.length === 0) {
+
+                    container.innerHTML =
+                        '<div class="empty-message">' +
+                            'No expense documents added yet.' +
+                        '</div>';
+
+                    return;
+                }
+
+
+                var html =
+
+                    '<div class="expense-table-wrapper">' +
+
+                        '<table class="expense-table">' +
+
+                            '<thead>' +
+
+                                '<tr>' +
+                                    '<th>#</th>' +
+                                    '<th>Date</th>' +
+                                    '<th>Customer / Activity</th>' +
+                                    '<th>Place</th>' +
+                                    '<th>Expense Type</th>' +
+                                    '<th>Amount (TL)</th>' +
+                                    '<th>Receipt</th>' +
+                                    '<th>Actions</th>' +
+                                '</tr>' +
+
+                            '</thead>' +
+
+                            '<tbody>';
+
+
+                for (
+                    var i = 0;
+                    i < expenses.length;
+                    i++
+                ) {
+
+                    var expense =
+                        expenses[i];
+
+
+                    html +=
+
+                        '<tr>' +
+
+                            '<td>' +
+                                (i + 1) +
+                                '<div class="expense-id">' +
+                                    escapeHtml(expense.id) +
+                                '</div>' +
+                            '</td>' +
+
+                            '<td>' +
+                                escapeHtml(expense.date) +
+                            '</td>' +
+
+                            '<td>' +
+                                escapeHtml(
+                                    expense.customerActivity
+                                ) +
+                            '</td>' +
+
+                            '<td>' +
+                                escapeHtml(expense.place) +
+                            '</td>' +
+
+                            '<td>' +
+                                escapeHtml(
+                                    expense.expenseType
+                                ) +
+                            '</td>' +
+
+                            '<td>' +
+                                expense.amount.toFixed(2) +
+                            '</td>' +
+
+                            '<td>' +
+                                escapeHtml(
+                                    expense.fileName
+                                ) +
+                            '</td>' +
+
+                            '<td class="table-actions">' +
+
+                                '<button ' +
+                                    'class="view-button" ' +
+                                    'data-action="view" ' +
+                                    'data-index="' + i + '">' +
+                                    'View' +
+                                '</button>' +
+
+                                '<button ' +
+                                    'class="edit-button" ' +
+                                    'data-action="edit" ' +
+                                    'data-index="' + i + '">' +
+                                    'Edit' +
+                                '</button>' +
+
+                                '<button ' +
+                                    'class="delete-button" ' +
+                                    'data-action="delete" ' +
+                                    'data-index="' + i + '">' +
+                                    'Delete' +
+                                '</button>' +
+
+                            '</td>' +
+
+                        '</tr>';
+                }
+
+
+                html +=
+
+                            '</tbody>' +
+
+                        '</table>' +
+
+                    '</div>';
+
+
+                container.innerHTML = html;
+            }
+
+
+            /*
+             * OPEN EXISTING EXPENSE
+             */
+
+            function openExpense(
+                index,
+                mode
+            ) {
+
+                var expense =
+                    expenses[index];
+
+
+                if (!expense) {
+                    return;
+                }
+
+
+                currentEditIndex =
+                    index;
+
+
+                document
+                    .getElementById("expenseDate")
+                    .value =
+                        expense.date;
+
+
+                document
+                    .getElementById("customerActivity")
+                    .value =
+                        expense.customerActivity;
+
+
+                document
+                    .getElementById("place")
+                    .value =
+                        expense.place;
+
+
+                document
+                    .getElementById("expenseType")
+                    .value =
+                        expense.expenseType;
+
+
+                document
+                    .getElementById("amount")
+                    .value =
+                        expense.amount;
+
+
+                showDocumentPreview(
+                    expense.file
+                );
+
+
+                document
+                    .getElementById("reviewLayout")
+                    .style.display = "flex";
+
+
+                if (mode === "view") {
+
+                    document
+                        .getElementById("formTitle")
+                        .textContent =
+                            "View Expense";
+
+                    setFormReadOnly(true);
+
+                } else {
+
+                    document
+                        .getElementById("formTitle")
+                        .textContent =
+                            "Edit Expense";
+
+                    setFormReadOnly(false);
+
+                }
+            }
+
+
+            /*
+             * NEW EXPENSE
              */
 
             document
                 .getElementById("addExpenseBtn")
-                .addEventListener("click", function () {
+                .addEventListener(
+                    "click",
+                    function () {
 
-                    document
-                        .getElementById("expenseFileInput")
-                        .click();
+                        resetExpenseForm();
 
-                });
+                        document
+                            .getElementById(
+                                "expenseFileInput"
+                            )
+                            .click();
+
+                    }
+                );
 
 
             /*
@@ -583,56 +911,25 @@
                         }
 
 
-                        selectedFile = file;
-
-
-                        selectedFileUrl =
-                            URL.createObjectURL(
-                                selectedFile
-                            );
+                        currentEditIndex = -1;
 
 
                         document
-                            .getElementById(
-                                "previewFileName"
-                            )
+                            .getElementById("formTitle")
                             .textContent =
-                                selectedFile.name;
+                                "New Expense";
 
 
-                        var previewContainer =
-                            document.getElementById(
-                                "previewContainer"
-                            );
+                        setFormReadOnly(false);
 
 
-                        previewContainer.innerHTML = "";
-
-
-                        if (
-                            selectedFile.type ===
-                            "application/pdf"
-                        ) {
-
-                            previewContainer.innerHTML =
-                                '<iframe src="' +
-                                selectedFileUrl +
-                                '"></iframe>';
-
-                        } else {
-
-                            previewContainer.innerHTML =
-                                '<img src="' +
-                                selectedFileUrl +
-                                '" />';
-
-                        }
+                        showDocumentPreview(
+                            file
+                        );
 
 
                         document
-                            .getElementById(
-                                "reviewLayout"
-                            )
+                            .getElementById("reviewLayout")
                             .style.display = "flex";
 
                     }
@@ -640,269 +937,406 @@
 
 
             /*
-             * SAVE EXPENSE
+             * SAVE / UPDATE
              */
 
             document
                 .getElementById("saveExpenseBtn")
-                .addEventListener("click", function () {
+                .addEventListener(
+                    "click",
+                    function () {
 
-                    if (!selectedFile) {
+                        if (!selectedFile) {
 
-                        alert(
-                            "Please select a receipt document."
-                        );
+                            alert(
+                                "Please select a receipt document."
+                            );
 
-                        return;
-                    }
-
-
-                    var date =
-                        document
-                            .getElementById(
-                                "expenseDate"
-                            )
-                            .value;
+                            return;
+                        }
 
 
-                    var customerActivity =
-                        document
-                            .getElementById(
-                                "customerActivity"
-                            )
-                            .value
-                            .trim();
+                        var date =
+                            document
+                                .getElementById(
+                                    "expenseDate"
+                                )
+                                .value;
 
 
-                    var place =
-                        document
-                            .getElementById(
-                                "place"
-                            )
-                            .value
-                            .trim();
+                        var customerActivity =
+                            document
+                                .getElementById(
+                                    "customerActivity"
+                                )
+                                .value
+                                .trim();
 
 
-                    var expenseType =
-                        document
-                            .getElementById(
-                                "expenseType"
-                            )
-                            .value;
+                        var place =
+                            document
+                                .getElementById(
+                                    "place"
+                                )
+                                .value
+                                .trim();
 
 
-                    var amountValue =
-                        document
-                            .getElementById(
-                                "amount"
-                            )
-                            .value;
+                        var expenseType =
+                            document
+                                .getElementById(
+                                    "expenseType"
+                                )
+                                .value;
 
 
-                    var currency =
-                        document
-                            .getElementById(
-                                "currency"
-                            )
-                            .value;
+                        var amountValue =
+                            document
+                                .getElementById(
+                                    "amount"
+                                )
+                                .value;
 
-
-                    /*
-                     * VALIDATION
-                     */
-
-                    if (!date) {
-
-                        alert(
-                            "Please enter the expense date."
-                        );
-
-                        return;
-                    }
-
-
-                    if (!customerActivity) {
-
-                        alert(
-                            "Please enter Customer / Activity."
-                        );
-
-                        return;
-                    }
-
-
-                    if (!place) {
-
-                        alert(
-                            "Please enter Place."
-                        );
-
-                        return;
-                    }
-
-
-                    if (!expenseType) {
-
-                        alert(
-                            "Please select an Expense Type."
-                        );
-
-                        return;
-                    }
-
-
-                    if (
-                        !amountValue ||
-                        parseFloat(amountValue) <= 0
-                    ) {
-
-                        alert(
-                            "Please enter a valid Amount."
-                        );
-
-                        return;
-                    }
-
-
-                    /*
-                     * DETERMINE EXCEL TARGET
-                     */
-
-                    var parsedDate =
-                        new Date(
-                            date + "T00:00:00"
-                        );
-
-
-                    var monthIndex =
-                        parsedDate.getMonth();
-
-
-                    var day =
-                        parsedDate.getDate();
-
-
-                    var excelSheet =
-                        monthSheets[
-                            monthIndex
-                        ];
-
-
-                    var excelColumn =
-                        excelColumnMap[
-                            expenseType
-                        ];
-
-
-                    /*
-                     * CREATE EXPENSE OBJECT
-                     */
-
-                    var expense = {
-
-                        id:
-                            "EXP-" +
-                            String(
-                                expenses.length + 1
-                            ).padStart(4, "0"),
-
-                        date:
-                            date,
-
-                        day:
-                            day,
-
-                        customerActivity:
-                            customerActivity,
-
-                        place:
-                            place,
-
-                        expenseType:
-                            expenseType,
-
-                        amount:
-                            parseFloat(
-                                amountValue
-                            ),
-
-                        currency:
-                            currency,
-
-                        fileName:
-                            selectedFile.name,
-
-                        fileType:
-                            selectedFile.type,
-
-                        fileSize:
-                            selectedFile.size,
-
-                        file:
-                            selectedFile,
 
                         /*
-                         * FINAL EXCEL TARGET
+                         * VALIDATION
                          */
 
-                        excelTarget: {
+                        if (!date) {
 
-                            sheet:
-                                excelSheet,
+                            alert(
+                                "Please enter the expense date."
+                            );
 
-                            day:
-                                day,
+                            return;
+                        }
 
-                            categoryColumn:
-                                excelColumn
+
+                        if (!customerActivity) {
+
+                            alert(
+                                "Please enter Customer / Activity."
+                            );
+
+                            return;
+                        }
+
+
+                        if (!place) {
+
+                            alert(
+                                "Please enter Place."
+                            );
+
+                            return;
+                        }
+
+
+                        if (!expenseType) {
+
+                            alert(
+                                "Please select an Expense Type."
+                            );
+
+                            return;
+                        }
+
+
+                        if (
+                            !amountValue ||
+                            parseFloat(amountValue) <= 0
+                        ) {
+
+                            alert(
+                                "Please enter a valid Amount."
+                            );
+
+                            return;
+                        }
+
+
+                        var amount =
+                            parseFloat(
+                                amountValue
+                            );
+
+
+                        /*
+                         * UPDATE EXISTING
+                         */
+
+                        if (
+                            currentEditIndex >= 0
+                        ) {
+
+                            var existingExpense =
+                                expenses[
+                                    currentEditIndex
+                                ];
+
+
+                            existingExpense.date =
+                                date;
+
+                            existingExpense.customerActivity =
+                                customerActivity;
+
+                            existingExpense.place =
+                                place;
+
+                            existingExpense.expenseType =
+                                expenseType;
+
+                            existingExpense.amount =
+                                amount;
+
+
+                            /*
+                             * CURRENCY IS FIXED
+                             */
+
+                            existingExpense.currency =
+                                "TRY";
+
+
+                            existingExpense.excelTarget =
+                                createExcelTarget(
+                                    date,
+                                    expenseType
+                                );
+
+
+                            console.log(
+                                "Expense updated:",
+                                existingExpense
+                            );
+
+                        } else {
+
+
+                            /*
+                             * CREATE NEW
+                             */
+
+                            var expense = {
+
+                                id:
+                                    "EXP-" +
+                                    String(
+                                        nextExpenseNumber
+                                    ).padStart(
+                                        4,
+                                        "0"
+                                    ),
+
+                                date:
+                                    date,
+
+                                customerActivity:
+                                    customerActivity,
+
+                                place:
+                                    place,
+
+                                expenseType:
+                                    expenseType,
+
+                                amount:
+                                    amount,
+
+
+                                /*
+                                 * ONLY TL IS ALLOWED
+                                 */
+
+                                currency:
+                                    "TRY",
+
+
+                                fileName:
+                                    selectedFile.name,
+
+                                fileType:
+                                    selectedFile.type,
+
+                                fileSize:
+                                    selectedFile.size,
+
+                                file:
+                                    selectedFile,
+
+                                excelTarget:
+                                    createExcelTarget(
+                                        date,
+                                        expenseType
+                                    )
+
+                            };
+
+
+                            expenses.push(
+                                expense
+                            );
+
+
+                            nextExpenseNumber++;
+
+
+                            console.log(
+                                "Expense created:",
+                                expense
+                            );
 
                         }
 
-                    };
+
+                        console.log(
+                            "All expenses:",
+                            expenses
+                        );
 
 
-                    expenses.push(
-                        expense
-                    );
+                        renderExpenseList();
 
+                        resetExpenseForm();
 
-                    console.log(
-                        "Expense saved:",
-                        expense
-                    );
-
-
-                    console.log(
-                        "Excel target:",
-                        expense.excelTarget
-                    );
-
-
-                    console.log(
-                        "All expenses:",
-                        expenses
-                    );
-
-
-                    renderExpenseList();
-
-
-                    resetExpenseForm();
-
-                });
+                    }
+                );
 
 
             /*
-             * CANCEL
+             * CLOSE / CANCEL
              */
 
             document
-                .getElementById("cancelExpenseBtn")
-                .addEventListener("click", function () {
+                .getElementById("closeExpenseBtn")
+                .addEventListener(
+                    "click",
+                    function () {
 
-                    resetExpenseForm();
+                        resetExpenseForm();
 
-                });
+                    }
+                );
+
+
+            /*
+             * VIEW / EDIT / DELETE
+             */
+
+            document
+                .getElementById("expenseListContainer")
+                .addEventListener(
+                    "click",
+                    function (event) {
+
+                        var button =
+                            event.target.closest(
+                                "button[data-action]"
+                            );
+
+
+                        if (!button) {
+                            return;
+                        }
+
+
+                        var action =
+                            button.getAttribute(
+                                "data-action"
+                            );
+
+
+                        var index =
+                            parseInt(
+                                button.getAttribute(
+                                    "data-index"
+                                ),
+                                10
+                            );
+
+
+                        /*
+                         * VIEW
+                         */
+
+                        if (action === "view") {
+
+                            openExpense(
+                                index,
+                                "view"
+                            );
+
+                            return;
+                        }
+
+
+                        /*
+                         * EDIT
+                         */
+
+                        if (action === "edit") {
+
+                            openExpense(
+                                index,
+                                "edit"
+                            );
+
+                            return;
+                        }
+
+
+                        /*
+                         * DELETE
+                         */
+
+                        if (action === "delete") {
+
+                            var expense =
+                                expenses[index];
+
+
+                            if (!expense) {
+                                return;
+                            }
+
+
+                            var confirmed =
+                                confirm(
+                                    "Delete this expense?\n\n" +
+                                    expense.date +
+                                    " - " +
+                                    expense.customerActivity +
+                                    "\n" +
+                                    expense.amount.toFixed(2) +
+                                    " TL"
+                                );
+
+
+                            if (!confirmed) {
+                                return;
+                            }
+
+
+                            expenses.splice(
+                                index,
+                                1
+                            );
+
+
+                            console.log(
+                                "Expense deleted."
+                            );
+
+
+                            renderExpenseList();
+
+                            resetExpenseForm();
+
+                        }
+
+                    }
+                );
 
 
             /*
